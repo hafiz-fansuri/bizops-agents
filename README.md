@@ -18,6 +18,19 @@ Point it at any small business by swapping one YAML file (a *business profile*).
 
 ### Browser-based Office HQ
 
+The [public Office HQ demo](https://hafiz-fansuri.github.io/bizops-agents/) runs on GitHub Pages.
+Ask the supervisor to check stock, summarize sales, open a support ticket, record an expense,
+or draft a message. Supported changes pause for approval. Try
+`Open a ticket for Alex Tan: Starter Pack delivery question` or
+`Draft an email for Alex Tan: Your replacement is ready.`
+The office highlights workers during routing and shows when an action needs approval.
+
+Guests work with disposable in-memory demo records. To save records, chat history, and pending
+approvals across sessions, use **Save workspace** to sign in with Supabase. Each account can
+access its own workspace through row-level security. The database schema is in
+`supabase/office_workspaces.sql`. The hosted supervisor uses rules for supported demo operations.
+The Python app below uses Ollama for open-ended analysis and planning with the configured tools.
+
 From the project directory, install the package and start the local server in PowerShell:
 
 ```powershell
