@@ -7,8 +7,6 @@ const stations = {
   marketing: [463, 341, '#d19c49', '#e4af80'],
 };
 
-let workspace;
-let pending = null;
 let busy = false;
 
 function drawFloor() {
@@ -89,45 +87,8 @@ function drawFloor() {
   }
 }
 
-function button(label, className, action) {
-  const el = document.createElement('button');
-  el.type = 'button';
-  el.className = className;
-  el.textContent = label;
-  el.addEventListener('click', action);
-  return el;
-}
-
-function indicateAssignments(agents) {
-  document.querySelectorAll('[data-agent]').forEach((el) => {
-    el.dataset.assigned = String(agents.includes(el.dataset.agent));
-  });
-}
-
-function workStatus(state, agent) {
-  document.querySelectorAll('[data-agent]').forEach((element) => {
-    element.dataset.working = String(state === 'Working' && element.dataset.agent === agent);
-  });
-  $('work-status').textContent = agent ? agent[0].toUpperCase() + agent.slice(1) + ' · ' + state : state;
-}
-
-async function startWork(agent) {
-  workStatus('Working', agent);
-  if (!document.hidden) await new Promise((resolve) => {
-    const timer = setTimeout(resolve, 100);
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      clearTimeout(timer);
-      resolve();
-    }));
-  });
-}
-
-function render(data) {
-  workspace = data;
-  $('business').textContent = data.business.name;
-  for (const id of ['team', 'desks', 'scenarios']) $(id).replaceChildren();
-  for (const agent of Object.keys(data.agents)) {
-    const [x, y, color] = stations[agent];
+function renderTeam() {
+  for (const [agent, [x, y, color]] of Object.entries(stations)) {
     const label = agent[0].toUpperCase() + agent.slice(1);
     const member = document.createElement('div');
     const desk = document.createElement('span');
@@ -141,17 +102,6 @@ function render(data) {
     $('team').append(member);
     $('desks').append(desk);
   }
-  for (const scenario of data.scenarios) {
-    const card = button(scenario.label, 'scenario', () => {
-      run({kind: 'demo', scenario: scenario.id}, scenario.label);
-    });
-    const role = document.createElement('small');
-    role.textContent = scenario.agent;
-    card.prepend(role);
-    $('scenarios').append(card);
-  }
-  indicateAssignments(data.approval ? [data.approval.agent] : []);
-  showApproval(data.approval);
 }
 
 function append(text, kind = '') {
@@ -164,107 +114,105 @@ function append(text, kind = '') {
 }
 
 function controls() {
-  $('reset').disabled = busy || !workspace;
+  $('prompt').disabled = !session || busy;
+  $('request').querySelector('button').disabled = !session || busy;
   $('workspace-account').disabled = busy;
-  document.querySelectorAll('.scenario').forEach((el) => {
-    el.disabled = busy || !!pending || !workspace;
-  });
-  document.querySelectorAll('#request input, #request button').forEach((el) => {
-    el.disabled = busy || !!pending || !workspace;
-  });
-  document.querySelectorAll('#approval button').forEach((el) => { el.disabled = busy; });
+  $('records-open').disabled = !session;
 }
 
-function showApproval(approval) {
-  pending = approval || null;
-  $('approval').hidden = !pending;
-  $('approval').replaceChildren();
-  if (!pending) return;
-  workStatus('Waiting for approval', approval.agent);
-  const title = document.createElement('strong');
-  title.textContent = 'Review proposed changes';
-  const details = document.createElement('pre');
-  details.textContent = approval.actions.map(({tool, args}) => tool + '\n' + JSON.stringify(args, null, 2)).join('\n\n');
-  $('approval').append(title, details,
-    button('Approve', 'action', () => run({kind: 'decision', id: approval.id, approve: true})),
-    button('Reject', 'action reject', () => run({kind: 'decision', id: approval.id, approve: false})));
+function displayStatus(run) {
+  const assignments = run?.assignments ?? [];
+  document.querySelectorAll('[data-agent]').forEach((element) => {
+    const assignment = assignments.find(({agent}) => agent === element.dataset.agent);
+    element.dataset.assigned = String(!!assignment);
+    element.dataset.working = String(assignment?.status === 'working' && run.status === 'working');
+  });
+  const working = assignments.filter(({status}) => status === 'working').map(({agent}) => agent);
+  $('work-status').textContent = {
+    routing: 'Supervisor routing',
+    working: working.length ? 'Working: ' + working.join(', ') : 'Supervisor preparing reply',
+    complete: 'Request complete',
+    failed: 'Request failed',
+  }[run?.status] ?? 'Team available';
 }
 
-function formatResult(value) {
-  if (typeof value === 'string') return value;
-  if (Array.isArray(value) && value.every((item) => item?.type === 'text')) {
-    return value.map((item) => {
-      try { return JSON.stringify(JSON.parse(item.text), null, 2); }
-      catch { return item.text; }
-    }).join('\n');
+function showRun(run, includeRequest = true) {
+  if (includeRequest) append(run.request, 'user');
+  if (run.assignments.length) {
+    append(run.assignments.map(({agent, task, status}) => agent + ' · ' + task
+      + (status === 'failed' ? ' (could not finish)' : '')).join('\n'));
   }
-  return JSON.stringify(value, null, 2);
+  if (run.answer) append(run.answer, run.status === 'failed' ? 'error' : '');
+  displayStatus(run);
 }
 
-async function run(body, label) {
-  if (busy) return;
+async function followRun(id) {
+  const shown = new Set();
+  for (let attempt = 0; attempt < 65; attempt++) {
+    const [run] = await getRuns(id);
+    if (run) {
+      displayStatus(run);
+      for (const {agent, task} of run.assignments) {
+        if (shown.has(agent)) continue;
+        shown.add(agent);
+        append('Supervisor assigned ' + agent + ' · ' + task);
+      }
+      if (run.status === 'complete' || run.status === 'failed') {
+        if (run.answer) append(run.answer, run.status === 'failed' ? 'error' : '');
+        return;
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+  throw new Error('The request is still pending. Sign in again later to check its saved status.');
+}
+
+async function restoreConversation() {
+  const rows = (await getRuns()).reverse();
+  $('log').replaceChildren();
+  if (!rows.length) append('Ask the supervisor a question or assign a task. Add business information under Business records.');
+  for (const row of rows) showRun(row);
+  const latest = rows.at(-1);
+  if (latest && ['routing', 'working'].includes(latest.status)
+      && Date.now() - Date.parse(latest.created_at) < 105000) {
+    try { await followRun(latest.id); }
+    catch (error) { append(error.message, 'error'); }
+  }
+}
+
+$('request').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const prompt = $('prompt');
+  const message = prompt.value.trim();
+  if (!session || !message || busy) return;
   busy = true;
   controls();
-  const before = structuredClone(demoState);
-  const previousMessages = messages();
-  workStatus(body.kind === 'chat' ? 'Supervisor routing' : 'Team available');
-  if (label) append(label, 'user');
-  const status = body.kind === 'info' ? null : append('Working…');
+  prompt.value = '';
+  append(message, 'user');
+  displayStatus({status: 'routing'});
   try {
-    const data = await hostedDemo(body, startWork);
-    if (data.agents) {
-      if (body.kind === 'reset') {
-        $('log').replaceChildren();
-        append('Demo reset. The original sample records are ready.');
-      }
-      render(data);
-    } else {
-      showApproval(data.approval);
-      if (data.routes) indicateAssignments(data.routes);
-      if (data.routes?.length) {
-        append('Supervisor assigned: ' + data.routes.map((agent) =>
-          agent[0].toUpperCase() + agent.slice(1)).join(', '));
-      }
-      if (data.message !== undefined) append(formatResult(data.message));
-      if (data.result !== undefined) append(formatResult(data.result));
-    }
-    status?.remove();
-    if (body.kind !== 'info') await saveWorkspace({demo: demoState, messages: messages()});
-    if (!pending) workStatus(body.kind === 'reset' || body.kind === 'info' ? 'Team available' : 'Request complete');
+    const {id} = await cloudRequest('/functions/v1/office-chat', {
+      method: 'POST', body: {id: crypto.randomUUID(), message},
+    });
+    await followRun(id);
   } catch (error) {
-    demoState = before;
-    restoreMessages(previousMessages);
-    showApproval(before.approval?.details);
-    if (!pending) workStatus('Request failed');
+    displayStatus({status: 'failed'});
     append(error.message, 'error');
   } finally {
-    status?.remove();
     busy = false;
     controls();
   }
-}
+});
 
-function messages() {
-  return Array.from($('log').children, (item) => ({
-    text: item.textContent,
-    kind: item.classList.contains('user') ? 'user' : '',
-  })).slice(-40);
-}
-
-function restoreMessages(history) {
-  $('log').replaceChildren();
-  for (const {text, kind} of history) append(text, kind === 'user' ? 'user' : '');
-}
-
-const welcome = messages();
 $('workspace-account').addEventListener('click', () => {
   if (session) {
     session = null;
-    revision = null;
-    demoState = freshDemo();
-    restoreMessages(welcome);
-    $('workspace-account').textContent = 'Save workspace';
-    run({kind: 'info'});
+    $('log').replaceChildren();
+    $('record-list').replaceChildren();
+    append('Sign in to return to your workspace.');
+    $('workspace-account').textContent = 'Sign in';
+    displayStatus();
+    controls();
     return;
   }
   $('account-status').textContent = '';
@@ -279,24 +227,16 @@ $('account-form').addEventListener('submit', async (event) => {
   $('account-status').textContent = 'Connecting…';
   const password = $('password');
   try {
-    const result = await cloudAuth($('email').value, password.value, event.submitter?.value === 'register');
-    if (!result) {
-      $('account-status').textContent = 'Check your email to confirm the account, then return here and sign in.';
+    const signedIn = await cloudAuth($('email').value, password.value, event.submitter?.value === 'register');
+    if (!signedIn) {
+      $('account-status').textContent = 'Confirm the address using the email, then return here to sign in.';
       return;
     }
-    const saved = result.workspace;
-    if (saved?.demo && Array.isArray(saved.messages)) {
-      demoState = saved.demo;
-      restoreMessages(saved.messages);
-    } else {
-      await saveWorkspace({demo: demoState, messages: messages()});
-    }
+    await restoreConversation();
     $('workspace-account').textContent = 'Sign out';
     $('account').close();
-    render(await hostedDemo({kind: 'info'}, startWork));
   } catch (error) {
     session = null;
-    revision = null;
     $('account-status').textContent = error.message;
   } finally {
     password.value = '';
@@ -305,16 +245,50 @@ $('account-form').addEventListener('submit', async (event) => {
   }
 });
 
-$('request').addEventListener('submit', (event) => {
+async function listRecords() {
+  const records = await cloudRequest('/rest/v1/office_records?select=title,category,body&order=created_at.desc&limit=20');
+  const list = $('record-list');
+  list.replaceChildren();
+  for (const {category, title, body} of records) {
+    const detail = document.createElement('details');
+    const summary = document.createElement('summary');
+    summary.textContent = category + ' · ' + title;
+    const content = document.createElement('p');
+    content.textContent = body;
+    detail.append(summary, content);
+    list.append(detail);
+  }
+}
+$('records-open').addEventListener('click', async () => {
+  $('record-status').textContent = '';
+  $('records').showModal();
+  try { await listRecords(); }
+  catch (error) { $('record-status').textContent = error.message; }
+});
+$('records-close').addEventListener('click', () => $('records').close());
+$('records-form').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const prompt = $('prompt');
-  const message = prompt.value.trim();
-  if (!message || busy || pending) return;
-  prompt.value = '';
-  run({kind: 'chat', message}, message);
+  const button = event.submitter;
+  if (!session || button.disabled) return;
+  button.disabled = true;
+  const title = $('record-title').value.trim();
+  const body = $('record-body').value.trim();
+  $('record-status').textContent = 'Saving…';
+  try {
+    if (!title || !body) throw new Error('Enter a title and business information.');
+    await cloudRequest('/rest/v1/office_records', {
+      method: 'POST', body: {category: $('category').value, title, body}, prefer: 'return=minimal',
+    });
+    $('records-form').reset();
+    $('record-status').textContent = 'Record saved.';
+    await listRecords();
+  } catch (error) {
+    $('record-status').textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
 });
-$('reset').addEventListener('click', () => {
-  if (window.confirm('Reset the sample records, conversation, and pending approval?')) run({kind: 'reset'});
-});
+
 drawFloor();
-run({kind: 'info'});
+renderTeam();
+controls();

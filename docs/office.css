@@ -82,7 +82,19 @@ dialog { width: min(420px, calc(100vw - 24px)); background: var(--panel); color:
 dialog::backdrop { background: #09131bd9; }
 dialog form { padding: 20px; }
 dialog p { margin: 10px 0; color: var(--muted); line-height: 1.5; }
-dialog input { display: block; width: 100%; margin-bottom: 12px; }
+dialog input, dialog select, dialog textarea {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 8px;
+}
+#record-list { padding: 0 20px; }
+#record-list details { padding: 10px 0; border-top: 1px solid var(--line); }
+#record-list p { white-space: pre-wrap; overflow-wrap: anywhere; }
 #work-status { color: var(--mint); }
 @media (max-width: 1050px) {
   main { grid-template-columns: minmax(0, 1fr) minmax(280px, 29vw); }

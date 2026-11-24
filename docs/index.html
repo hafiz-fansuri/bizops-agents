@@ -5,22 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>BizOps · Office HQ</title>
   <link rel="stylesheet" href="office.css">
-  <script src="demo-data.js" defer></script>
   <script src="cloud-workspace.js" defer></script>
-  <script src="hosted-demo.js" defer></script>
   <script src="office.js" defer></script>
 </head>
 <body>
   <header class="mast">
     <div class="brand"><span class="brand-icon" aria-hidden="true"></span> BIZOPS <span>OFFICE HQ</span></div>
-    <div class="workspace"><span class="light" aria-hidden="true"></span><span id="business">Demo workspace</span></div>
-    <button id="workspace-account" class="quiet" type="button">Save workspace</button>
-    <button id="reset" class="quiet" disabled>Reset demo</button>
+    <div class="workspace"><span class="light" aria-hidden="true"></span><span id="business">Operations workspace</span></div>
+    <button id="records-open" class="quiet" type="button" disabled>Business records</button>
+    <button id="workspace-account" class="quiet" type="button">Sign in</button>
   </header>
   <dialog id="account">
     <form id="account-form">
-      <h2>Save your workspace</h2>
-      <p>Sign in to keep sample records and supervisor chats in Supabase.</p>
+      <h2>Access Office HQ</h2>
+      <p>Sign in to use your business records and saved conversations.</p>
       <label for="email">Email</label>
       <input id="email" type="email" autocomplete="email" required>
       <label for="password">Password</label>
@@ -31,11 +29,30 @@
       <button id="account-close" class="quiet" type="button">Close</button>
     </form>
   </dialog>
+  <dialog id="records">
+    <form id="records-form">
+      <h2>Business records</h2>
+      <p>Save the information you want the supervisor to use in its work.</p>
+      <label for="category">Category</label>
+      <select id="category">
+        <option value="operations">Operations</option><option value="sales">Sales</option>
+        <option value="inventory">Inventory</option><option value="finance">Finance</option>
+        <option value="support">Support</option><option value="marketing">Marketing</option>
+      </select>
+      <label for="record-title">Title</label>
+      <input id="record-title" maxlength="120" required>
+      <label for="record-body">Business information</label>
+      <textarea id="record-body" rows="4" maxlength="4000" required></textarea>
+      <p id="record-status" role="status"></p>
+      <button class="action">Save record</button>
+      <button id="records-close" class="quiet" type="button">Close</button>
+    </form>
+    <div id="record-list"></div>
+  </dialog>
   <main>
     <section class="roster" aria-label="Agent roster">
       <h2>TEAM</h2>
       <div id="team"></div>
-      <p class="nav-note">Sample records stay in this demo workspace.</p>
     </section>
     <section class="center" aria-labelledby="office-title">
       <div class="room-title"><h1 id="office-title">Operations floor</h1><span id="work-status" role="status">Team available</span></div>
@@ -43,10 +60,6 @@
         <canvas id="floor" width="640" height="400" aria-hidden="true"></canvas>
         <div id="desks"></div>
       </div>
-      <section class="drills" aria-labelledby="drills-title">
-        <div class="room-title"><h2 id="drills-title">Test scenarios</h2><span>NO MODEL REQUIRED</span></div>
-        <div id="scenarios"></div>
-      </section>
     </section>
     <aside class="console" aria-label="Supervisor chat">
       <header class="agent-header">
@@ -54,14 +67,13 @@
         <div><h2>Supervisor</h2><p>Routes your requests and brings back the team’s results.</p></div>
       </header>
       <div id="log" class="log" role="log" aria-live="polite">
-        <p class="message">Tell the supervisor what you need. Try “Give me a sales, stock, and support update.” Sample changes stay in this browser session.</p>
+        <p class="message">Sign in to ask the supervisor a question or assign work. You can add business information under Business records.</p>
       </div>
-      <div id="approval" hidden></div>
       <form id="request">
         <label for="prompt">Ask the supervisor</label>
         <div class="compose">
-          <input id="prompt" maxlength="1000" required placeholder="What do you need?">
-          <button>Send</button>
+          <input id="prompt" maxlength="4000" required placeholder="What do you need?" disabled>
+          <button disabled>Send</button>
         </div>
       </form>
     </aside>

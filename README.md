@@ -18,18 +18,30 @@ Point it at any small business by swapping one YAML file (a *business profile*).
 
 ### Browser-based Office HQ
 
-The [public Office HQ demo](https://hafiz-fansuri.github.io/bizops-agents/) runs on GitHub Pages.
-Ask the supervisor to check stock, summarize sales, open a support ticket, record an expense,
-or draft a message. Supported changes pause for approval. Try
-`Open a ticket for Alex Tan: Starter Pack delivery question` or
-`Draft an email for Alex Tan: Your replacement is ready.`
-The office highlights workers during routing and shows when an action needs approval.
+The [hosted Office HQ](https://hafiz-fansuri.github.io/bizops-agents/) uses Supabase for authenticated
+conversations, agent assignments, and business records. Sign in and add your organization's information
+under **Business records**. When you send a message, the supervisor can delegate to up to three
+specialists and bring their work back as a single reply. The office displays each agent's status from
+Supabase. Specialists analyze the supplied information, plan work, and draft material.
 
-Guests work with disposable in-memory demo records. To save records, chat history, and pending
-approvals across sessions, use **Save workspace** to sign in with Supabase. Each account can
-access its own workspace through row-level security. The database schema is in
-`supabase/office_workspaces.sql`. The hosted supervisor uses rules for supported demo operations.
-The Python app below uses Ollama for open-ended analysis and planning with the configured tools.
+The production schema in `supabase/office_production.sql` seeds the five specialist roles. Each user's
+records and conversations start empty, and row-level security scopes reads to the signed-in account.
+Earlier demo workspaces use a separate legacy table.
+
+Set the following [Edge Function secrets](https://supabase.com/docs/guides/functions/secrets) in the
+Supabase project. Keep them out of the browser and repository.
+
+| Secret | Value |
+| --- | --- |
+| `OFFICE_ALLOWED_EMAILS` | Comma-separated verified account emails allowed to invoke the model |
+| `OFFICE_LLM_URL` | Reachable HTTPS URL for an OpenAI-compatible `/chat/completions` endpoint |
+| `OFFICE_LLM_MODEL` | Model ID served by that endpoint |
+| `OFFICE_LLM_KEY` | API key if that endpoint requires one |
+
+To use Nemotron 3.5 Lightning online, point these settings to an authenticated, hosted Ollama-compatible
+endpoint that serves the model. The hosted supervisor sends the user's request and relevant account data
+to the configured provider. Supabase stores the run and processes it in the background after the user
+sends the message.
 
 From the project directory, install the package and start the local server in PowerShell:
 
@@ -108,8 +120,8 @@ $env:OLLAMA_MODEL = 'nemotron-3.5-lightning'
 ```
 
 Use the printed localhost link. If `OLLAMA_SUPERVISOR_MODEL` is set, that value
-selects a separate supervisor model. The GitHub Pages demo runs in the browser
-and uses rule-based routing.
+selects a separate supervisor model. The hosted app uses the model configured in
+the Supabase Edge Function secrets.
 
 The local agent prompts use [the capability catalog](src/bizops/capabilities.json).
 It distinguishes supported, partial, and planned jobs. The runtime checks each

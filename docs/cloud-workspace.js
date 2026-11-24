@@ -2,15 +2,16 @@
 const api = 'https://zihupqxmwfxnndlquzte.supabase.co';
 const publishable = 'sb_publishable_KQbHJAP6HHaGAIoS4C9YMA_4og2gefL';
 let session;
-let revision;
 
 async function supabaseRequest(path, {method = 'GET', body, auth, prefer} = {}) {
   const headers = {apikey: publishable, 'Content-Type': 'application/json'};
   if (auth) headers.Authorization = 'Bearer ' + auth;
   if (prefer) headers.Prefer = prefer;
   const response = await fetch(api + path, {method, headers, body: body && JSON.stringify(body)});
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.msg || data.message || 'Supabase could not complete the request.');
+  if (response.ok && response.status === 204) return null;
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error_description || data.msg || data.message || data.error
+    || 'Supabase could not complete the request.');
   return data;
 }
 
@@ -20,12 +21,7 @@ async function cloudAuth(email, password, register) {
   const auth = await supabaseRequest('/auth/v1' + endpoint, {method: 'POST', body: {email, password}});
   if (!auth.access_token) return false;
   session = auth;
-  try {
-    return {workspace: await loadWorkspace()};
-  } catch (error) {
-    session = null;
-    throw error;
-  }
+  return true;
 }
 
 async function cloudToken() {
@@ -37,23 +33,11 @@ async function cloudToken() {
   return session.access_token;
 }
 
-async function loadWorkspace() {
-  const auth = await cloudToken();
-  const rows = await supabaseRequest('/rest/v1/office_workspaces?select=payload,revision', {auth});
-  revision = rows[0]?.revision ?? null;
-  return rows[0]?.payload ?? null;
+async function cloudRequest(path, options = {}) {
+  return supabaseRequest(path, {...options, auth: await cloudToken()});
 }
 
-async function saveWorkspace(payload) {
-  if (!session) return;
-  const auth = await cloudToken();
-  const creating = revision === null;
-  const next = creating ? 0 : revision + 1;
-  const suffix = creating ? '' : '?revision=eq.' + revision;
-  const rows = await supabaseRequest('/rest/v1/office_workspaces' + suffix, {
-    method: creating ? 'POST' : 'PATCH', auth, prefer: 'return=representation',
-    body: {payload, revision: next},
-  });
-  if (!rows.length) throw new Error('This workspace changed in another tab. Sign in again to load the latest version.');
-  revision = next;
+function getRuns(id) {
+  const filter = id ? '&id=eq.' + encodeURIComponent(id) : '&order=created_at.desc&limit=30';
+  return cloudRequest('/rest/v1/office_runs?select=id,request,status,assignments,answer,created_at' + filter);
 }
