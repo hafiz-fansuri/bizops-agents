@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+from importlib.resources import files
 from typing import Annotated, Any, TypedDict
 
 from langchain_core.language_models import BaseChatModel
@@ -109,11 +110,33 @@ def business_ctx(profile: dict) -> dict:
             "policies": pol, **v}
 
 
+def capability_brief(agent: dict, tool_names: set[str]) -> str:
+    lines = []
+    for task in agent.get("tasks", []):
+        required = set(task["tools_required"])
+        missing = sorted((required - tool_names) | set(task["tools_missing"]))
+        if task["status"] == "planned":
+            status = "planned"
+        elif missing or task["status"] == "partial":
+            status = "partial"
+        else:
+            status = "supported"
+        unavailable = ", unavailable tools: " + ", ".join(missing) if missing else ""
+        lines.append(f"- {task['name']} ({status}{unavailable})")
+    return "\n".join(lines)
+
+
 # ----------------------------------------------------------------------------- worker
-def build_worker(name: str, spec: dict, tools: list[BaseTool], llm: BaseChatModel, write_names: set[str], ctx: dict):
+def build_worker(name: str, spec: dict, tools: list[BaseTool], llm: BaseChatModel, write_names: set[str],
+                 ctx: dict, capabilities: str = ""):
     by_name = {t.name: t for t in tools}
     model = llm.bind_tools(tools) if tools else llm
-    system = SystemMessage(prompts.WORKER.format(prompt=spec["prompt"], **ctx))
+    instruction = prompts.WORKER.format(prompt=spec["prompt"], **ctx)
+    if capabilities:
+        instruction += "\n\nCapability catalog for your role:\n" + capabilities
+        instruction += ("\nFor partial or planned tasks, provide the supported portion or a plan and identify "
+                        "what capability is missing. Use only your assigned tools.")
+    system = SystemMessage(instruction)
 
     async def call_model(state: WorkerState) -> dict:
         resp = await model.ainvoke([system, *state["scratch"]])
@@ -182,7 +205,12 @@ def build_graph(profile: dict, tools: dict[str, BaseTool], llm: BaseChatModel,
     if missing:
         raise ValueError(f"profile references tools no MCP server provides: {missing}. Available: {sorted(tools)}")
 
-    roster = "\n".join(f"- {n}: {s['description']}" for n, s in agents.items())
+    catalog = json.loads(files("bizops").joinpath("capabilities.json").read_text(encoding="utf-8"))["agents"]
+    roster = "\n".join(
+        f"- {n}: {spec['description']} Catalog scope: {catalog[n]['description']}"
+        if n in catalog else f"- {n}: {spec['description']}"
+        for n, spec in agents.items()
+    )
     sup_system = SystemMessage(prompts.SUPERVISOR.format(roster=roster, **ctx))
     final_system = SystemMessage(prompts.FINAL.format(**ctx))
 
@@ -204,7 +232,9 @@ def build_graph(profile: dict, tools: dict[str, BaseTool], llm: BaseChatModel,
         return {"next": nxt, "instruction": instr or _last_human(state["messages"])}
 
     def make_node(name: str):
-        worker = build_worker(name, agents[name], [tools[t] for t in agents[name]["tools"]], llm, write_names, ctx)
+        spec = agents[name]
+        worker = build_worker(name, spec, [tools[t] for t in spec["tools"]], llm, write_names, ctx,
+                              capability_brief(catalog.get(name, {}), set(spec["tools"])))
 
         async def node(state: State, config) -> dict:
             prompt = (f"Owner's original request: {_last_human(state['messages'])}\n"

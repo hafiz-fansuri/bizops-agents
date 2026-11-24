@@ -1,0 +1,2570 @@
+{
+  "schema_version": "1.0",
+  "description": "Capability catalog for the bizops multi-agent team. Business-agnostic: every task is expressed in generic terms (items, customers, orders).",
+  "how_to_use": {
+    "status": {
+      "supported": "all required tools exist in the built-in MCP server today",
+      "partial": "core of the task works today; tools_missing add precision or automation",
+      "planned": "needs tools that do not exist yet"
+    },
+    "needs_approval": "true when the task writes data; the runtime pauses for the owner (profile.approval_required must list the write tools)",
+    "example_requests": "also usable as routing examples / eval prompts"
+  },
+  "stats": {
+    "agents": 5,
+    "tasks": 90,
+    "by_status": {
+      "supported": 38,
+      "partial": 45,
+      "planned": 7
+    },
+    "by_agent": {
+      "sales": 19,
+      "inventory": 17,
+      "finance": 19,
+      "support": 16,
+      "marketing": 19
+    },
+    "proposed_new_tools": 42,
+    "workflows": 9
+  },
+  "existing_tools": {
+    "read": [
+      "financial_summary",
+      "list_customers",
+      "list_expenses",
+      "list_items",
+      "list_orders",
+      "list_tickets",
+      "low_stock",
+      "sales_summary"
+    ],
+    "write": [
+      "adjust_stock",
+      "create_order",
+      "create_ticket",
+      "draft_message",
+      "record_expense",
+      "update_ticket"
+    ]
+  },
+  "agents": {
+    "sales": {
+      "description": "Orders, quotes, products & prices, customers, sales reporting, targets.",
+      "owns": [
+        "orders",
+        "customers (read/write)",
+        "sales reporting"
+      ],
+      "out_of_scope": [
+        "bookkeeping and tax",
+        "physical stock counts",
+        "ticket handling",
+        "marketing copy"
+      ],
+      "escalate_to_owner_when": [
+        "discount above policy limit",
+        "order over a high-value threshold",
+        "customer dispute"
+      ],
+      "tasks": [
+        {
+          "id": "sales.product_lookup",
+          "name": "Product & price lookup",
+          "category": "catalog",
+          "description": "Find products by name/SKU/category with price and availability.",
+          "example_requests": [
+            "How much is the Premium Widget?",
+            "What do we sell in the bundles category?",
+            "Do we have Kopi C in stock?"
+          ],
+          "tools_required": [
+            "list_items"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "sales.availability_check",
+          "name": "Check availability for a customer request",
+          "category": "catalog",
+          "description": "Confirm requested quantities can be fulfilled before promising delivery.",
+          "example_requests": [
+            "Can I take 30 Standard Widgets today?",
+            "Is there enough stock for an order of 5 gift cards?"
+          ],
+          "tools_required": [
+            "list_items"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": [
+            "inventory"
+          ]
+        },
+        {
+          "id": "sales.create_order",
+          "name": "Create / take an order",
+          "category": "orders",
+          "description": "Create a paid order for a customer with one or more lines; stock is decremented, fails safely if stock is short.",
+          "example_requests": [
+            "Order 2 Starter Packs for Alex Tan",
+            "Add an order for Siti: 1 Premium Widget and 3 Standard Widgets"
+          ],
+          "tools_required": [
+            "list_customers",
+            "list_items",
+            "create_order"
+          ],
+          "tools_missing": [],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "sales.repeat_order",
+          "name": "Repeat a customer's previous order",
+          "category": "orders",
+          "description": "Look up the customer's last order and re-create it.",
+          "example_requests": [
+            "Same as Alex's last order please",
+            "Repeat Aisyah's Friday office order"
+          ],
+          "tools_required": [
+            "list_customers",
+            "list_orders",
+            "create_order"
+          ],
+          "tools_missing": [
+            "get_order"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": []
+        },
+        {
+          "id": "sales.order_lookup",
+          "name": "Look up orders",
+          "category": "orders",
+          "description": "List recent orders, filter by customer, and report totals/status.",
+          "example_requests": [
+            "Show orders from the last 3 days",
+            "What did Siti order recently?"
+          ],
+          "tools_required": [
+            "list_orders",
+            "list_customers"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "sales.order_detail",
+          "name": "Show full detail of one order",
+          "category": "orders",
+          "description": "Lines, quantities, discounts and payment status for a single order.",
+          "example_requests": [
+            "What was in order 42?",
+            "Show me the lines of the last order"
+          ],
+          "tools_required": [
+            "list_orders"
+          ],
+          "tools_missing": [
+            "get_order"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": []
+        },
+        {
+          "id": "sales.cancel_order",
+          "name": "Cancel an order / return stock",
+          "category": "orders",
+          "description": "Cancel an order, return items to stock and flag a refund for finance.",
+          "example_requests": [
+            "Cancel order 37, customer changed their mind",
+            "Void the last order and put the stock back"
+          ],
+          "tools_required": [],
+          "tools_missing": [
+            "cancel_order",
+            "get_order"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "planned",
+          "handoff_to": [
+            "finance",
+            "inventory",
+            "support"
+          ]
+        },
+        {
+          "id": "sales.apply_discount",
+          "name": "Apply a discount within policy",
+          "category": "orders",
+          "description": "Apply a percentage/amount discount to an order if within the owner's policy, otherwise escalate.",
+          "example_requests": [
+            "Give Alex 10% off order 12",
+            "Can we do RM5 off for this loyal customer?"
+          ],
+          "tools_required": [
+            "list_orders"
+          ],
+          "tools_missing": [
+            "apply_discount"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "finance"
+          ]
+        },
+        {
+          "id": "sales.quote",
+          "name": "Prepare a quote / estimate",
+          "category": "orders",
+          "description": "Price a basket for a customer without creating an order; optionally draft the quote message.",
+          "example_requests": [
+            "Quote 50 Standard Widgets for a company order",
+            "How much for 10 Kopi O and 5 Matcha for tomorrow's office?"
+          ],
+          "tools_required": [
+            "list_items",
+            "list_customers",
+            "draft_message"
+          ],
+          "tools_missing": [
+            "create_quote"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "support"
+          ],
+          "notes": "Basic quoting works today via list_items + arithmetic + draft_message; create_quote adds tracking and validity."
+        },
+        {
+          "id": "sales.sales_summary",
+          "name": "Sales summary for a period",
+          "category": "reporting",
+          "description": "Revenue, order count, gross profit and top sellers for the last N days.",
+          "example_requests": [
+            "How were sales this week?",
+            "Revenue for the last 30 days?"
+          ],
+          "tools_required": [
+            "sales_summary"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "sales.daily_close",
+          "name": "Daily sales close",
+          "category": "reporting",
+          "description": "End-of-day summary: today's orders, revenue, best seller, items that sold out.",
+          "example_requests": [
+            "Close out today's sales",
+            "What did we sell today?"
+          ],
+          "tools_required": [
+            "sales_summary",
+            "list_orders",
+            "low_stock"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": [
+            "finance",
+            "inventory"
+          ]
+        },
+        {
+          "id": "sales.best_worst_sellers",
+          "name": "Best and worst sellers",
+          "category": "reporting",
+          "description": "Rank items by units/revenue and highlight laggards.",
+          "example_requests": [
+            "What are our top 5 sellers this month?",
+            "Which items aren't selling?"
+          ],
+          "tools_required": [
+            "sales_summary",
+            "list_items"
+          ],
+          "tools_missing": [
+            "slow_movers"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": [
+            "inventory",
+            "marketing"
+          ]
+        },
+        {
+          "id": "sales.sales_by_range",
+          "name": "Sales by custom range / grouping",
+          "category": "reporting",
+          "description": "Sales between any two dates, grouped by day/week/month/item/category/customer.",
+          "example_requests": [
+            "Compare sales between 1-15 Nov and 16-30 Nov",
+            "Sales per category in October"
+          ],
+          "tools_required": [
+            "sales_summary"
+          ],
+          "tools_missing": [
+            "sales_by_period"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": []
+        },
+        {
+          "id": "sales.customer_lookup",
+          "name": "Customer lookup & history",
+          "category": "customers",
+          "description": "Find a customer and summarise their contact, notes and recent purchases.",
+          "example_requests": [
+            "Who is Siti Rahman?",
+            "Show Alex's purchase history"
+          ],
+          "tools_required": [
+            "list_customers",
+            "list_orders"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "sales.top_customers",
+          "name": "Top / VIP customers",
+          "category": "customers",
+          "description": "Rank customers by spend or frequency.",
+          "example_requests": [
+            "Who are my top 10 customers?",
+            "Which customers order most often?"
+          ],
+          "tools_required": [
+            "list_orders"
+          ],
+          "tools_missing": [
+            "customer_ranking"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": [
+            "marketing"
+          ]
+        },
+        {
+          "id": "sales.add_customer",
+          "name": "Add or update a customer",
+          "category": "customers",
+          "description": "Create a customer record or update contact/notes.",
+          "example_requests": [
+            "Add a new customer: Daniel, 012-345 6789",
+            "Note that Aisyah prefers oat milk"
+          ],
+          "tools_required": [
+            "list_customers"
+          ],
+          "tools_missing": [
+            "create_customer",
+            "update_customer"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": []
+        },
+        {
+          "id": "sales.upsell",
+          "name": "Upsell / cross-sell suggestions",
+          "category": "growth",
+          "description": "Suggest add-ons or bundles based on what sells together and current stock.",
+          "example_requests": [
+            "What should I offer a customer buying a Starter Pack?",
+            "Suggest a bundle for office orders"
+          ],
+          "tools_required": [
+            "list_items",
+            "sales_summary"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": [
+            "marketing"
+          ]
+        },
+        {
+          "id": "sales.targets",
+          "name": "Sales targets & progress",
+          "category": "growth",
+          "description": "Set and track revenue/order/profit targets.",
+          "example_requests": [
+            "Set a RM5,000 revenue target for November",
+            "Are we on track for this month's target?"
+          ],
+          "tools_required": [
+            "sales_summary"
+          ],
+          "tools_missing": [
+            "set_target",
+            "target_progress"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "finance"
+          ]
+        },
+        {
+          "id": "sales.catalog_admin",
+          "name": "Add or change products and prices",
+          "category": "catalog",
+          "description": "Create items, change prices/costs, archive items.",
+          "example_requests": [
+            "Add a new item: Iced Hojicha, RM13, cost RM4.5",
+            "Raise Kopi O to RM6.50"
+          ],
+          "tools_required": [
+            "list_items"
+          ],
+          "tools_missing": [
+            "create_item",
+            "update_item"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "finance",
+            "inventory"
+          ]
+        }
+      ]
+    },
+    "inventory": {
+      "description": "Stock levels, reorder planning, suppliers & purchase orders, stock adjustments, stocktakes, item catalogue.",
+      "owns": [
+        "stock",
+        "suppliers",
+        "purchase orders"
+      ],
+      "out_of_scope": [
+        "customer orders",
+        "paying suppliers",
+        "promotion copy"
+      ],
+      "escalate_to_owner_when": [
+        "large write-off",
+        "negative stock variance after stocktake",
+        "PO above budget"
+      ],
+      "tasks": [
+        {
+          "id": "inventory.stock_check",
+          "name": "Check stock levels",
+          "category": "stock",
+          "description": "Current stock for one item, a category or everything.",
+          "example_requests": [
+            "How many Kopi C do we have?",
+            "Show stock for all widgets"
+          ],
+          "tools_required": [
+            "list_items"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "inventory.low_stock_alert",
+          "name": "Low-stock alert",
+          "category": "stock",
+          "description": "Items at or below reorder level with suggested reorder quantities.",
+          "example_requests": [
+            "What's running low?",
+            "Which items do I need to reorder?"
+          ],
+          "tools_required": [
+            "low_stock"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": [
+            "marketing"
+          ]
+        },
+        {
+          "id": "inventory.reorder_plan",
+          "name": "Build a reorder plan",
+          "category": "replenishment",
+          "description": "Combine low stock with recent sales to propose quantities per item (and budget).",
+          "example_requests": [
+            "Make a reorder list for this week",
+            "What should I buy, and roughly how much will it cost?"
+          ],
+          "tools_required": [
+            "low_stock",
+            "sales_summary",
+            "list_items"
+          ],
+          "tools_missing": [
+            "days_of_cover"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": [
+            "finance"
+          ]
+        },
+        {
+          "id": "inventory.restock",
+          "name": "Record a restock",
+          "category": "stock",
+          "description": "Add received stock to an item with a reason/reference.",
+          "example_requests": [
+            "Add 50 Kopi C, delivery arrived today",
+            "We received 20 Standard Widgets"
+          ],
+          "tools_required": [
+            "list_items",
+            "adjust_stock"
+          ],
+          "tools_missing": [],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "inventory.write_off",
+          "name": "Write off damaged / expired / lost stock",
+          "category": "stock",
+          "description": "Remove stock with a reason for the audit trail; refuses to go negative.",
+          "example_requests": [
+            "Write off 3 spilled matcha",
+            "Remove 2 Premium Widgets, damaged in transit"
+          ],
+          "tools_required": [
+            "list_items",
+            "adjust_stock"
+          ],
+          "tools_missing": [],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "supported",
+          "handoff_to": [
+            "finance"
+          ]
+        },
+        {
+          "id": "inventory.stock_history",
+          "name": "Stock movement history",
+          "category": "audit",
+          "description": "Trace how an item's stock changed (sales, restocks, write-offs).",
+          "example_requests": [
+            "Why did Standard Widget stock drop this week?",
+            "Show all write-offs this month"
+          ],
+          "tools_required": [],
+          "tools_missing": [
+            "stock_history"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "planned",
+          "handoff_to": []
+        },
+        {
+          "id": "inventory.stockout_forecast",
+          "name": "Stock-out forecast / days of cover",
+          "category": "forecasting",
+          "description": "Estimate when each item runs out based on sales velocity.",
+          "example_requests": [
+            "When will we run out of Kopi O?",
+            "Which items have less than 5 days of cover?"
+          ],
+          "tools_required": [
+            "sales_summary",
+            "list_items"
+          ],
+          "tools_missing": [
+            "days_of_cover"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": []
+        },
+        {
+          "id": "inventory.slow_movers",
+          "name": "Slow movers & dead stock",
+          "category": "analysis",
+          "description": "Find items with little or no sales so cash isn't tied up.",
+          "example_requests": [
+            "What hasn't sold in 30 days?",
+            "Which products should I clear out?"
+          ],
+          "tools_required": [
+            "sales_summary",
+            "list_items"
+          ],
+          "tools_missing": [
+            "slow_movers"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": [
+            "marketing",
+            "finance"
+          ]
+        },
+        {
+          "id": "inventory.abc_analysis",
+          "name": "ABC classification",
+          "category": "analysis",
+          "description": "Rank items by revenue contribution (A/B/C) to focus attention.",
+          "example_requests": [
+            "Which items make up 80% of revenue?",
+            "Classify my stock into A/B/C"
+          ],
+          "tools_required": [
+            "sales_summary",
+            "list_items"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "inventory.stock_valuation",
+          "name": "Stock valuation",
+          "category": "finance-link",
+          "description": "Value of stock on hand at cost and retail.",
+          "example_requests": [
+            "How much money is tied up in stock?",
+            "What's my inventory worth?"
+          ],
+          "tools_required": [
+            "list_items"
+          ],
+          "tools_missing": [
+            "stock_valuation"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": [
+            "finance"
+          ],
+          "notes": "list_items does not return cost today; stock_valuation (or adding cost to list_items) is needed for accuracy."
+        },
+        {
+          "id": "inventory.stocktake",
+          "name": "Stocktake / reconciliation",
+          "category": "audit",
+          "description": "Compare physical counts with system stock and book variances.",
+          "example_requests": [
+            "Here are my counts: Kopi O 55, Kopi C 7 ... reconcile",
+            "Do a stocktake for widgets"
+          ],
+          "tools_required": [
+            "list_items",
+            "adjust_stock"
+          ],
+          "tools_missing": [
+            "record_stocktake"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "finance"
+          ]
+        },
+        {
+          "id": "inventory.new_item",
+          "name": "Add a new item",
+          "category": "catalog",
+          "description": "Register a new product/ingredient with price, cost, opening stock and reorder level.",
+          "example_requests": [
+            "Add oat milk 1L, cost RM9, reorder at 6",
+            "Create SKU P-005 Deluxe Pack"
+          ],
+          "tools_required": [
+            "list_items"
+          ],
+          "tools_missing": [
+            "create_item"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "sales",
+            "finance"
+          ]
+        },
+        {
+          "id": "inventory.reorder_levels",
+          "name": "Tune reorder levels",
+          "category": "catalog",
+          "description": "Recommend and set reorder levels from demand and lead time.",
+          "example_requests": [
+            "Is my reorder level for Kopi O sensible?",
+            "Set reorder levels based on last month's sales"
+          ],
+          "tools_required": [
+            "sales_summary",
+            "low_stock"
+          ],
+          "tools_missing": [
+            "update_item"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": []
+        },
+        {
+          "id": "inventory.suppliers",
+          "name": "Supplier lookup & management",
+          "category": "procurement",
+          "description": "Find suppliers, lead times, what each supplies, add/update suppliers.",
+          "example_requests": [
+            "Who supplies our matcha?",
+            "What's the lead time for cups?"
+          ],
+          "tools_required": [],
+          "tools_missing": [
+            "list_suppliers"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "planned",
+          "handoff_to": []
+        },
+        {
+          "id": "inventory.purchase_order",
+          "name": "Draft / raise a purchase order",
+          "category": "procurement",
+          "description": "Turn a reorder plan into a purchase order for a supplier.",
+          "example_requests": [
+            "Create a PO for my matcha supplier for the low items",
+            "Draft an order to the cup supplier"
+          ],
+          "tools_required": [
+            "low_stock",
+            "draft_message"
+          ],
+          "tools_missing": [
+            "create_purchase_order",
+            "list_suppliers"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "finance"
+          ]
+        },
+        {
+          "id": "inventory.receive_goods",
+          "name": "Receive a purchase order",
+          "category": "procurement",
+          "description": "Receive delivered goods against a PO: increases stock and records what's owed.",
+          "example_requests": [
+            "PO 7 arrived, 2 boxes short",
+            "Receive PO 12 in full"
+          ],
+          "tools_required": [
+            "adjust_stock"
+          ],
+          "tools_missing": [
+            "receive_purchase_order"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "finance"
+          ]
+        },
+        {
+          "id": "inventory.shrinkage",
+          "name": "Shrinkage / wastage report",
+          "category": "analysis",
+          "description": "Quantify write-offs and unexplained variances by item and reason.",
+          "example_requests": [
+            "How much did we waste this month?",
+            "Where are we losing stock?"
+          ],
+          "tools_required": [],
+          "tools_missing": [
+            "stock_history"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "planned",
+          "handoff_to": [
+            "finance"
+          ]
+        }
+      ]
+    },
+    "finance": {
+      "description": "P&L, expenses, margins, budgets, cash-flow, invoices/receivables, forecasting, exports.",
+      "owns": [
+        "expenses",
+        "P&L",
+        "budgets",
+        "invoices & payments"
+      ],
+      "out_of_scope": [
+        "giving legal/tax advice (estimates only)",
+        "changing prices without the owner",
+        "customer communication tone"
+      ],
+      "escalate_to_owner_when": [
+        "unusual expense",
+        "negative cash-flow forecast",
+        "refund above threshold"
+      ],
+      "tasks": [
+        {
+          "id": "finance.pnl",
+          "name": "Profit & loss summary",
+          "category": "reporting",
+          "description": "Revenue, gross profit, expenses and net profit for the last N days.",
+          "example_requests": [
+            "How profitable were we in the last 30 days?",
+            "Give me this month's P&L"
+          ],
+          "tools_required": [
+            "financial_summary"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "finance.pnl_range",
+          "name": "P&L for any date range / compare periods",
+          "category": "reporting",
+          "description": "P&L between two dates and month-over-month comparison.",
+          "example_requests": [
+            "Compare October vs November profit",
+            "P&L for 1–15 Nov"
+          ],
+          "tools_required": [
+            "financial_summary"
+          ],
+          "tools_missing": [
+            "financial_summary_range"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": []
+        },
+        {
+          "id": "finance.revenue_report",
+          "name": "Revenue report",
+          "category": "reporting",
+          "description": "Revenue and order counts with top sellers.",
+          "example_requests": [
+            "What's our revenue this week?",
+            "Revenue per day over the last 14 days"
+          ],
+          "tools_required": [
+            "sales_summary"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "finance.expense_list",
+          "name": "List and review expenses",
+          "category": "expenses",
+          "description": "List expenses by period and search by category/note.",
+          "example_requests": [
+            "Show all expenses this month",
+            "What did I spend on supplies?"
+          ],
+          "tools_required": [
+            "list_expenses"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "finance.record_expense",
+          "name": "Record an expense",
+          "category": "expenses",
+          "description": "Log a business expense with category and note.",
+          "example_requests": [
+            "Record RM85 for milk from the wholesaler",
+            "Add a petrol expense of 40"
+          ],
+          "tools_required": [
+            "record_expense"
+          ],
+          "tools_missing": [],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "finance.expense_breakdown",
+          "name": "Expense breakdown by category",
+          "category": "expenses",
+          "description": "Totals per category with share of spend and trend.",
+          "example_requests": [
+            "Where is my money going?",
+            "Break down last month's expenses"
+          ],
+          "tools_required": [
+            "list_expenses"
+          ],
+          "tools_missing": [
+            "expenses_by_category"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": []
+        },
+        {
+          "id": "finance.expense_anomalies",
+          "name": "Unusual expense detection",
+          "category": "expenses",
+          "description": "Flag outliers, duplicates and sudden category jumps.",
+          "example_requests": [
+            "Anything weird in my spending?",
+            "Did I pay for the same thing twice?"
+          ],
+          "tools_required": [
+            "list_expenses"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "finance.item_profitability",
+          "name": "Profit margin per item",
+          "category": "profitability",
+          "description": "Gross margin per item to find winners and money-losers.",
+          "example_requests": [
+            "Which items make the most profit?",
+            "What's my margin on matcha latte?"
+          ],
+          "tools_required": [
+            "sales_summary",
+            "list_items"
+          ],
+          "tools_missing": [
+            "item_margins"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": [
+            "sales",
+            "marketing"
+          ]
+        },
+        {
+          "id": "finance.pricing_check",
+          "name": "Price & margin check",
+          "category": "profitability",
+          "description": "Test a proposed price/discount against cost and target margin.",
+          "example_requests": [
+            "If I give 15% off Premium Widgets, do I still profit?",
+            "What price gives a 60% margin?"
+          ],
+          "tools_required": [
+            "list_items"
+          ],
+          "tools_missing": [
+            "item_margins"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": [
+            "sales",
+            "marketing"
+          ],
+          "notes": "Works from price/cost if cost is exposed; currently approximate."
+        },
+        {
+          "id": "finance.breakeven",
+          "name": "Break-even analysis",
+          "category": "planning",
+          "description": "Units/revenue needed to cover fixed costs.",
+          "example_requests": [
+            "How many orders do I need per month to break even?",
+            "What's my break-even revenue?"
+          ],
+          "tools_required": [
+            "financial_summary",
+            "list_expenses"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "finance.cashflow",
+          "name": "Cash-flow overview",
+          "category": "planning",
+          "description": "Cash in vs out, upcoming payables, runway estimate.",
+          "example_requests": [
+            "Do I have enough cash for next month's restock?",
+            "Show cash in vs out this month"
+          ],
+          "tools_required": [
+            "financial_summary",
+            "list_expenses"
+          ],
+          "tools_missing": [
+            "list_payables",
+            "list_receivables"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": []
+        },
+        {
+          "id": "finance.budgets",
+          "name": "Budgets & budget-vs-actual",
+          "category": "planning",
+          "description": "Set monthly budgets per category and track overspend.",
+          "example_requests": [
+            "Set a RM300 monthly supplies budget",
+            "Am I over budget this month?"
+          ],
+          "tools_required": [
+            "list_expenses"
+          ],
+          "tools_missing": [
+            "set_budget",
+            "budget_vs_actual"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": []
+        },
+        {
+          "id": "finance.forecast",
+          "name": "Revenue / profit forecast",
+          "category": "planning",
+          "description": "Project the next weeks from recent run-rate and trend.",
+          "example_requests": [
+            "What will revenue be next month?",
+            "Forecast profit for December"
+          ],
+          "tools_required": [
+            "sales_summary",
+            "financial_summary"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "finance.invoices",
+          "name": "Invoices & receipts",
+          "category": "billing",
+          "description": "Generate an invoice/receipt for an order and draft it to the customer.",
+          "example_requests": [
+            "Make an invoice for order 31",
+            "Send Aisyah her receipt"
+          ],
+          "tools_required": [
+            "list_orders",
+            "draft_message"
+          ],
+          "tools_missing": [
+            "generate_invoice"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "support"
+          ]
+        },
+        {
+          "id": "finance.receivables",
+          "name": "Unpaid orders / receivables",
+          "category": "billing",
+          "description": "Who owes money, how old, and chasing reminders.",
+          "example_requests": [
+            "Who hasn't paid me?",
+            "Draft reminders for overdue invoices"
+          ],
+          "tools_required": [
+            "list_orders",
+            "draft_message"
+          ],
+          "tools_missing": [
+            "list_receivables",
+            "record_payment"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "support"
+          ]
+        },
+        {
+          "id": "finance.payables",
+          "name": "Supplier payables",
+          "category": "billing",
+          "description": "What is owed to suppliers and when.",
+          "example_requests": [
+            "What bills are due this week?",
+            "How much do I owe suppliers?"
+          ],
+          "tools_required": [],
+          "tools_missing": [
+            "list_payables"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "planned",
+          "handoff_to": []
+        },
+        {
+          "id": "finance.refunds",
+          "name": "Process refunds",
+          "category": "billing",
+          "description": "Record a refund linked to a cancelled/returned order.",
+          "example_requests": [
+            "Refund order 37",
+            "How much have we refunded this month?"
+          ],
+          "tools_required": [
+            "record_expense"
+          ],
+          "tools_missing": [
+            "cancel_order",
+            "record_payment"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "sales",
+            "support"
+          ]
+        },
+        {
+          "id": "finance.tax_estimate",
+          "name": "Tax / SST estimate",
+          "category": "compliance",
+          "description": "Estimate tax payable from revenue and expenses using the configured rate.",
+          "example_requests": [
+            "Estimate my tax for this quarter",
+            "How much SST did I collect?"
+          ],
+          "tools_required": [
+            "financial_summary"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": [],
+          "notes": "Needs a tax-rate setting in the profile; estimates only, not tax advice."
+        },
+        {
+          "id": "finance.export",
+          "name": "Export reports",
+          "category": "reporting",
+          "description": "Export P&L, expenses or sales to CSV for an accountant.",
+          "example_requests": [
+            "Export last month's expenses to CSV",
+            "Give my accountant the November P&L"
+          ],
+          "tools_required": [
+            "list_expenses",
+            "financial_summary"
+          ],
+          "tools_missing": [
+            "export_csv"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": []
+        }
+      ]
+    },
+    "support": {
+      "description": "Tickets, customer context, complaint resolution proposals, reply drafts, follow-ups, FAQs. Drafts only - never sends.",
+      "owns": [
+        "tickets",
+        "customer communication drafts"
+      ],
+      "out_of_scope": [
+        "issuing refunds itself (hands off to finance/sales)",
+        "changing stock",
+        "marketing campaigns"
+      ],
+      "escalate_to_owner_when": [
+        "angry or legal-threat messages",
+        "refund/replacement beyond policy",
+        "safety/allergen complaints"
+      ],
+      "tasks": [
+        {
+          "id": "support.open_tickets",
+          "name": "Review open tickets",
+          "category": "tickets",
+          "description": "List open/closed tickets with customer, age and draft replies.",
+          "example_requests": [
+            "Any open support tickets?",
+            "Show closed tickets this week"
+          ],
+          "tools_required": [
+            "list_tickets"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "support.create_ticket",
+          "name": "Log a ticket",
+          "category": "tickets",
+          "description": "Open a ticket from a customer message/complaint.",
+          "example_requests": [
+            "Log a complaint from Alex: wrong item delivered",
+            "Create a ticket: Siti asks about delivery time"
+          ],
+          "tools_required": [
+            "list_customers",
+            "create_ticket"
+          ],
+          "tools_missing": [],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "support.update_ticket",
+          "name": "Update / close a ticket",
+          "category": "tickets",
+          "description": "Change status or store a reply draft on a ticket.",
+          "example_requests": [
+            "Close ticket 3, resolved",
+            "Save this reply on ticket 5"
+          ],
+          "tools_required": [
+            "list_tickets",
+            "update_ticket"
+          ],
+          "tools_missing": [],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "support.draft_reply",
+          "name": "Draft a reply to a customer",
+          "category": "communication",
+          "description": "Read the ticket + customer + order history and write a polite, specific reply draft (never sent).",
+          "example_requests": [
+            "Draft a reply to ticket 1",
+            "Write an apology to Alex for the wrong item"
+          ],
+          "tools_required": [
+            "list_tickets",
+            "list_customers",
+            "list_orders",
+            "update_ticket",
+            "draft_message"
+          ],
+          "tools_missing": [],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "support.customer_context",
+          "name": "Customer context before replying",
+          "category": "tickets",
+          "description": "One-page view of who the customer is, recent orders and open issues.",
+          "example_requests": [
+            "Give me context on Alex before I reply",
+            "What has Siti ordered and complained about?"
+          ],
+          "tools_required": [
+            "list_customers",
+            "list_orders",
+            "list_tickets"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "support.order_issue",
+          "name": "Investigate an order problem",
+          "category": "tickets",
+          "description": "Check order contents, stock and timing against what the customer claims.",
+          "example_requests": [
+            "Customer says they got 1 instead of 2 — check the order",
+            "Why was order 14 delayed?"
+          ],
+          "tools_required": [
+            "list_orders",
+            "list_customers",
+            "list_tickets"
+          ],
+          "tools_missing": [
+            "get_order",
+            "get_shipment_status"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": [
+            "sales",
+            "inventory"
+          ]
+        },
+        {
+          "id": "support.resolution_options",
+          "name": "Propose resolution (refund / replace / credit)",
+          "category": "tickets",
+          "description": "Suggest the cheapest acceptable fix within policy and hand off execution.",
+          "example_requests": [
+            "What should we offer for the wrong item?",
+            "Refund or replacement for ticket 4?"
+          ],
+          "tools_required": [
+            "list_tickets",
+            "list_orders"
+          ],
+          "tools_missing": [
+            "cancel_order",
+            "apply_discount"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "sales",
+            "finance"
+          ]
+        },
+        {
+          "id": "support.prioritise",
+          "name": "Prioritise & tag tickets",
+          "category": "triage",
+          "description": "Rank tickets by urgency/impact and tag by reason.",
+          "example_requests": [
+            "Which tickets should I handle first?",
+            "Tag all open tickets by issue type"
+          ],
+          "tools_required": [
+            "list_tickets",
+            "update_ticket"
+          ],
+          "tools_missing": [
+            "tag_ticket"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": []
+        },
+        {
+          "id": "support.overdue",
+          "name": "Overdue / unanswered tickets",
+          "category": "triage",
+          "description": "Find tickets older than the response target.",
+          "example_requests": [
+            "Which tickets have waited more than 24 hours?",
+            "Anything I forgot to answer?"
+          ],
+          "tools_required": [
+            "list_tickets"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "support.faq",
+          "name": "Answer common questions",
+          "category": "knowledge",
+          "description": "Answer FAQs (hours, delivery, returns, allergens) from the knowledge base.",
+          "example_requests": [
+            "What's our return policy?",
+            "Do we deliver to Petra Jaya?"
+          ],
+          "tools_required": [],
+          "tools_missing": [
+            "search_kb"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "planned",
+          "handoff_to": [],
+          "notes": "Until a knowledge base exists, the agent can only answer from the profile's policies."
+        },
+        {
+          "id": "support.templates",
+          "name": "Reply templates library",
+          "category": "knowledge",
+          "description": "Reuse approved wording for apology, delay, refund, welcome and thank-you messages.",
+          "example_requests": [
+            "Use the delay template for ticket 6",
+            "Show me the apology templates"
+          ],
+          "tools_required": [
+            "draft_message"
+          ],
+          "tools_missing": [
+            "list_templates"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": []
+        },
+        {
+          "id": "support.delay_notice",
+          "name": "Notify customers of a delay",
+          "category": "communication",
+          "description": "Draft proactive notices to all affected customers.",
+          "example_requests": [
+            "Tell everyone with open orders that we're delayed one day",
+            "Draft a stock-shortage notice for Kopi C orders"
+          ],
+          "tools_required": [
+            "list_orders",
+            "list_customers",
+            "draft_message"
+          ],
+          "tools_missing": [],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "supported",
+          "handoff_to": [
+            "sales"
+          ]
+        },
+        {
+          "id": "support.followup",
+          "name": "Follow-up / satisfaction check",
+          "category": "communication",
+          "description": "Draft a thank-you and feedback request after an order or resolved ticket.",
+          "example_requests": [
+            "Follow up with Alex after the fix",
+            "Ask last week's customers for feedback"
+          ],
+          "tools_required": [
+            "list_orders",
+            "list_customers",
+            "draft_message"
+          ],
+          "tools_missing": [],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "supported",
+          "handoff_to": [
+            "marketing"
+          ]
+        },
+        {
+          "id": "support.escalation",
+          "name": "Escalate to the owner",
+          "category": "communication",
+          "description": "Summarise a tricky case with facts, options and a recommendation.",
+          "example_requests": [
+            "Summarise ticket 8 for me, I need to decide",
+            "What's the situation with the angry customer?"
+          ],
+          "tools_required": [
+            "list_tickets",
+            "list_orders",
+            "list_customers"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "support.ticket_trends",
+          "name": "Support trends & insights",
+          "category": "analysis",
+          "description": "Common complaint reasons, volume trends and fixes to prevent them.",
+          "example_requests": [
+            "What do customers complain about most?",
+            "Are tickets going up?"
+          ],
+          "tools_required": [
+            "list_tickets"
+          ],
+          "tools_missing": [
+            "ticket_stats",
+            "tag_ticket"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "sales",
+            "inventory"
+          ]
+        },
+        {
+          "id": "support.delivery_status",
+          "name": "Delivery / pickup status",
+          "category": "tickets",
+          "description": "Tell the customer where their order is.",
+          "example_requests": [
+            "Where is Aisyah's order?",
+            "Has order 22 been delivered?"
+          ],
+          "tools_required": [
+            "list_orders"
+          ],
+          "tools_missing": [
+            "get_shipment_status"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": []
+        }
+      ]
+    },
+    "marketing": {
+      "description": "Promotions, campaigns, social/WhatsApp/email copy, segmentation, loyalty, campaign measurement. Drafts only.",
+      "owns": [
+        "campaigns",
+        "promo codes",
+        "content drafts"
+      ],
+      "out_of_scope": [
+        "setting prices",
+        "spending money",
+        "sending messages directly"
+      ],
+      "escalate_to_owner_when": [
+        "discount deeper than policy",
+        "spend required",
+        "claims about health or competitors"
+      ],
+      "tasks": [
+        {
+          "id": "marketing.promo_ideas",
+          "name": "Promotion ideas from real data",
+          "category": "strategy",
+          "description": "Propose promotions based on best sellers, slow movers and low-stock items.",
+          "example_requests": [
+            "What promo should I run this week?",
+            "Ideas to boost sales on slow days"
+          ],
+          "tools_required": [
+            "sales_summary",
+            "list_items",
+            "low_stock"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": [
+            "finance"
+          ]
+        },
+        {
+          "id": "marketing.clearance",
+          "name": "Clearance / slow-mover campaign",
+          "category": "strategy",
+          "description": "Design a offer to move slow stock while protecting margin.",
+          "example_requests": [
+            "Plan a promo to clear Standard Widgets",
+            "How can I sell the extra beans?"
+          ],
+          "tools_required": [
+            "list_items",
+            "sales_summary"
+          ],
+          "tools_missing": [
+            "slow_movers",
+            "item_margins"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": [
+            "finance",
+            "inventory"
+          ]
+        },
+        {
+          "id": "marketing.launch",
+          "name": "New product launch plan",
+          "category": "strategy",
+          "description": "Announcement copy, timeline and channels for a new item.",
+          "example_requests": [
+            "Launch plan for the new Hojicha latte",
+            "Announce our new bundle"
+          ],
+          "tools_required": [
+            "list_items",
+            "draft_message"
+          ],
+          "tools_missing": [
+            "create_campaign"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "inventory",
+            "sales"
+          ]
+        },
+        {
+          "id": "marketing.social_post",
+          "name": "Social media posts & captions",
+          "category": "content",
+          "description": "Short on-brand posts with caption and hashtag options for Instagram/Facebook/TikTok.",
+          "example_requests": [
+            "Write 3 Instagram captions for matcha latte",
+            "Facebook post for the weekend promo"
+          ],
+          "tools_required": [
+            "list_items",
+            "draft_message"
+          ],
+          "tools_missing": [],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "marketing.whatsapp_broadcast",
+          "name": "WhatsApp / SMS broadcast",
+          "category": "content",
+          "description": "Short broadcast message to a customer list (draft only).",
+          "example_requests": [
+            "Draft a WhatsApp blast for office-order customers",
+            "Short SMS for Friday promo"
+          ],
+          "tools_required": [
+            "list_customers",
+            "draft_message"
+          ],
+          "tools_missing": [],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "marketing.newsletter",
+          "name": "Email newsletter",
+          "category": "content",
+          "description": "Subject lines and body for a newsletter using real products and offers.",
+          "example_requests": [
+            "Write November's newsletter",
+            "Subject line options for the promo email"
+          ],
+          "tools_required": [
+            "list_items",
+            "sales_summary",
+            "draft_message"
+          ],
+          "tools_missing": [],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "marketing.product_copy",
+          "name": "Product descriptions",
+          "category": "content",
+          "description": "Menu/product descriptions, taglines and bundle names.",
+          "example_requests": [
+            "Write a description for House Beans 250g",
+            "Name a new gift bundle"
+          ],
+          "tools_required": [
+            "list_items"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "marketing.content_calendar",
+          "name": "Content calendar",
+          "category": "planning",
+          "description": "Plan a week/month of posts around sales patterns and events.",
+          "example_requests": [
+            "Make a 2-week content calendar",
+            "What should I post this month?"
+          ],
+          "tools_required": [
+            "sales_summary",
+            "list_items"
+          ],
+          "tools_missing": [
+            "calendar_events"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": []
+        },
+        {
+          "id": "marketing.seasonal",
+          "name": "Seasonal & holiday campaigns",
+          "category": "planning",
+          "description": "Campaign ideas around holidays and local events.",
+          "example_requests": [
+            "What can I run for Christmas?",
+            "Plan a Hari Raya promo"
+          ],
+          "tools_required": [
+            "list_items",
+            "sales_summary"
+          ],
+          "tools_missing": [
+            "calendar_events",
+            "create_campaign"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": []
+        },
+        {
+          "id": "marketing.segmentation",
+          "name": "Customer segmentation",
+          "category": "audience",
+          "description": "Group customers into new/loyal/at-risk/lapsed/big spenders for targeting.",
+          "example_requests": [
+            "Who are my loyal customers?",
+            "Segment customers for a campaign"
+          ],
+          "tools_required": [
+            "list_customers",
+            "list_orders"
+          ],
+          "tools_missing": [
+            "customer_segments"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": [
+            "sales"
+          ]
+        },
+        {
+          "id": "marketing.winback",
+          "name": "Win-back lapsed customers",
+          "category": "audience",
+          "description": "Find customers who stopped ordering and draft a tailored offer.",
+          "example_requests": [
+            "Who hasn't ordered in 60 days?",
+            "Draft a win-back message with a small discount"
+          ],
+          "tools_required": [
+            "list_customers",
+            "list_orders",
+            "draft_message"
+          ],
+          "tools_missing": [
+            "inactive_customers"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "sales",
+            "finance"
+          ]
+        },
+        {
+          "id": "marketing.loyalty",
+          "name": "Loyalty & referral program design",
+          "category": "retention",
+          "description": "Design points/stamp/referral mechanics and check they stay profitable.",
+          "example_requests": [
+            "Design a loyalty card for regulars",
+            "Referral offer: what can I afford?"
+          ],
+          "tools_required": [
+            "sales_summary",
+            "list_items"
+          ],
+          "tools_missing": [
+            "customer_segments",
+            "item_margins"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": [
+            "finance"
+          ]
+        },
+        {
+          "id": "marketing.promo_code",
+          "name": "Create a promo code",
+          "category": "retention",
+          "description": "Create a code with validity, cap and margin floor.",
+          "example_requests": [
+            "Create code NOV10 for 10% off until 30 Nov",
+            "Free-delivery code for office orders"
+          ],
+          "tools_required": [
+            "list_items"
+          ],
+          "tools_missing": [
+            "create_promo_code"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "finance",
+            "sales"
+          ]
+        },
+        {
+          "id": "marketing.campaign_plan",
+          "name": "Campaign plan",
+          "category": "strategy",
+          "description": "Goal, audience, offer, channel, schedule, budget and success metric for a campaign.",
+          "example_requests": [
+            "Plan a campaign to grow weekday sales",
+            "Build a plan to get 20 new customers"
+          ],
+          "tools_required": [
+            "sales_summary",
+            "list_items"
+          ],
+          "tools_missing": [
+            "create_campaign"
+          ],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "partial",
+          "handoff_to": [
+            "finance"
+          ]
+        },
+        {
+          "id": "marketing.campaign_results",
+          "name": "Measure campaign results",
+          "category": "analytics",
+          "description": "Compare sales during a campaign vs baseline and compute ROI.",
+          "example_requests": [
+            "Did the weekend promo work?",
+            "What was the ROI of the Instagram campaign?"
+          ],
+          "tools_required": [
+            "sales_summary"
+          ],
+          "tools_missing": [
+            "campaign_results"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "partial",
+          "handoff_to": [
+            "finance"
+          ]
+        },
+        {
+          "id": "marketing.ab_copy",
+          "name": "A/B copy variants",
+          "category": "content",
+          "description": "Produce variants of a message/headline to test.",
+          "example_requests": [
+            "Give me 3 variants of this promo message",
+            "Which headline is stronger?"
+          ],
+          "tools_required": [
+            "draft_message"
+          ],
+          "tools_missing": [],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "supported",
+          "handoff_to": []
+        },
+        {
+          "id": "marketing.reviews",
+          "name": "Request reviews & testimonials",
+          "category": "retention",
+          "description": "Draft polite review requests to happy customers.",
+          "example_requests": [
+            "Ask recent customers for a Google review",
+            "Draft a testimonial request"
+          ],
+          "tools_required": [
+            "list_customers",
+            "list_orders",
+            "draft_message"
+          ],
+          "tools_missing": [],
+          "writes_data": true,
+          "needs_approval": true,
+          "status": "supported",
+          "handoff_to": [
+            "support"
+          ]
+        },
+        {
+          "id": "marketing.competitor_scan",
+          "name": "Competitor & market scan",
+          "category": "research",
+          "description": "Look up competitor prices/offers and local trends.",
+          "example_requests": [
+            "What do other cafes in Kuching charge for matcha?",
+            "Trending promo ideas right now"
+          ],
+          "tools_required": [],
+          "tools_missing": [
+            "web_search"
+          ],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "planned",
+          "handoff_to": []
+        },
+        {
+          "id": "marketing.design_brief",
+          "name": "Design brief for poster / menu",
+          "category": "content",
+          "description": "A clear brief (copy, layout notes, brand tone) to hand to a designer or image tool.",
+          "example_requests": [
+            "Brief for a Raya promo poster",
+            "Write copy for a new menu board"
+          ],
+          "tools_required": [
+            "list_items"
+          ],
+          "tools_missing": [],
+          "writes_data": false,
+          "needs_approval": false,
+          "status": "supported",
+          "handoff_to": []
+        }
+      ]
+    }
+  },
+  "cross_agent_workflows": [
+    {
+      "id": "wf.end_of_day_close",
+      "name": "End-of-day close",
+      "trigger": "daily 21:00 or on request",
+      "steps": [
+        {
+          "agent": "sales",
+          "do": "daily sales summary and sold-out items"
+        },
+        {
+          "agent": "finance",
+          "do": "record today's expenses; compute day profit"
+        },
+        {
+          "agent": "inventory",
+          "do": "low-stock list and reorder suggestions"
+        }
+      ],
+      "output": "One-page daily close"
+    },
+    {
+      "id": "wf.morning_brief",
+      "name": "Morning brief",
+      "trigger": "daily 08:00",
+      "steps": [
+        {
+          "agent": "sales",
+          "do": "yesterday's sales"
+        },
+        {
+          "agent": "inventory",
+          "do": "low stock"
+        },
+        {
+          "agent": "support",
+          "do": "open and overdue tickets"
+        }
+      ],
+      "output": "Brief with 3 actions for today"
+    },
+    {
+      "id": "wf.weekly_review",
+      "name": "Weekly business review",
+      "trigger": "Monday 09:00",
+      "steps": [
+        {
+          "agent": "finance",
+          "do": "7-day P&L vs previous week"
+        },
+        {
+          "agent": "sales",
+          "do": "top/bottom sellers, target progress"
+        },
+        {
+          "agent": "marketing",
+          "do": "campaign results and next-week promo idea"
+        },
+        {
+          "agent": "support",
+          "do": "ticket trends"
+        }
+      ],
+      "output": "Weekly review with recommendations"
+    },
+    {
+      "id": "wf.low_stock_to_promo",
+      "name": "Low stock -> reorder; slow stock -> promo",
+      "trigger": "on request or weekly",
+      "steps": [
+        {
+          "agent": "inventory",
+          "do": "low stock + slow movers"
+        },
+        {
+          "agent": "finance",
+          "do": "margin check for clearance discount"
+        },
+        {
+          "agent": "marketing",
+          "do": "draft clearance campaign"
+        }
+      ],
+      "output": "Reorder list + approved-margin promo draft"
+    },
+    {
+      "id": "wf.complaint_resolution",
+      "name": "Complaint to resolution",
+      "trigger": "new ticket",
+      "steps": [
+        {
+          "agent": "support",
+          "do": "customer context + order issue"
+        },
+        {
+          "agent": "sales",
+          "do": "replacement/cancel order if needed"
+        },
+        {
+          "agent": "finance",
+          "do": "refund/credit entry"
+        },
+        {
+          "agent": "support",
+          "do": "draft apology + follow-up"
+        }
+      ],
+      "output": "Resolved ticket with drafts"
+    },
+    {
+      "id": "wf.new_product_launch",
+      "name": "New product launch",
+      "trigger": "on request",
+      "steps": [
+        {
+          "agent": "inventory",
+          "do": "create item, set reorder level"
+        },
+        {
+          "agent": "finance",
+          "do": "price/margin check"
+        },
+        {
+          "agent": "marketing",
+          "do": "launch copy + calendar"
+        },
+        {
+          "agent": "sales",
+          "do": "upsell suggestions"
+        }
+      ],
+      "output": "Item live + launch pack"
+    },
+    {
+      "id": "wf.winback",
+      "name": "Win-back campaign",
+      "trigger": "monthly",
+      "steps": [
+        {
+          "agent": "marketing",
+          "do": "find lapsed customers"
+        },
+        {
+          "agent": "finance",
+          "do": "approve offer margin"
+        },
+        {
+          "agent": "marketing",
+          "do": "draft messages"
+        },
+        {
+          "agent": "sales",
+          "do": "track returning orders"
+        }
+      ],
+      "output": "Win-back drafts and tracking"
+    },
+    {
+      "id": "wf.month_close",
+      "name": "Month-end close",
+      "trigger": "1st of month",
+      "steps": [
+        {
+          "agent": "finance",
+          "do": "P&L, expense breakdown, budget vs actual"
+        },
+        {
+          "agent": "inventory",
+          "do": "stocktake + valuation"
+        },
+        {
+          "agent": "finance",
+          "do": "export pack for accountant"
+        }
+      ],
+      "output": "Month-end pack"
+    },
+    {
+      "id": "wf.price_change",
+      "name": "Price change impact",
+      "trigger": "on request",
+      "steps": [
+        {
+          "agent": "finance",
+          "do": "margin impact"
+        },
+        {
+          "agent": "sales",
+          "do": "demand history for the item"
+        },
+        {
+          "agent": "marketing",
+          "do": "announcement draft"
+        }
+      ],
+      "output": "Recommendation + draft"
+    }
+  ],
+  "routing_hints": {
+    "sales": [
+      "order",
+      "buy",
+      "quote",
+      "price of",
+      "customer",
+      "sell",
+      "sold",
+      "revenue",
+      "discount",
+      "cancel order"
+    ],
+    "inventory": [
+      "stock",
+      "reorder",
+      "restock",
+      "supplier",
+      "purchase order",
+      "stocktake",
+      "write off",
+      "running low",
+      "expiry"
+    ],
+    "finance": [
+      "profit",
+      "expense",
+      "cost",
+      "margin",
+      "budget",
+      "cash",
+      "invoice",
+      "tax",
+      "p&l",
+      "refund",
+      "pay",
+      "owe"
+    ],
+    "support": [
+      "complaint",
+      "ticket",
+      "refund request",
+      "wrong item",
+      "reply to",
+      "apolog",
+      "delay",
+      "delivery",
+      "feedback",
+      "faq"
+    ],
+    "marketing": [
+      "promo",
+      "campaign",
+      "instagram",
+      "facebook",
+      "whatsapp",
+      "newsletter",
+      "caption",
+      "loyalty",
+      "post",
+      "advert",
+      "launch"
+    ]
+  },
+  "proposed_new_tools": {
+    "get_order": {
+      "owner_agent": "sales",
+      "signature": "get_order(order_id:int)",
+      "description": "Full detail of one order: lines, customer, status, payment.",
+      "writes_data": false
+    },
+    "create_customer": {
+      "owner_agent": "sales",
+      "signature": "create_customer(name, contact='', notes='')",
+      "description": "Add a customer record.",
+      "writes_data": true
+    },
+    "update_customer": {
+      "owner_agent": "sales",
+      "signature": "update_customer(customer_id, name?, contact?, notes?)",
+      "description": "Edit customer details/notes.",
+      "writes_data": true
+    },
+    "create_item": {
+      "owner_agent": "inventory",
+      "signature": "create_item(sku,name,price,cost,stock,reorder_level,category)",
+      "description": "Add a new product/menu item.",
+      "writes_data": true
+    },
+    "update_item": {
+      "owner_agent": "inventory",
+      "signature": "update_item(sku, name?, price?, cost?, reorder_level?, category?, active?)",
+      "description": "Change price, cost, reorder level, name or archive an item.",
+      "writes_data": true
+    },
+    "cancel_order": {
+      "owner_agent": "sales",
+      "signature": "cancel_order(order_id, reason, restock=True)",
+      "description": "Cancel an order, optionally returning stock, and mark it for refund.",
+      "writes_data": true
+    },
+    "apply_discount": {
+      "owner_agent": "sales",
+      "signature": "apply_discount(order_id, percent|amount, reason)",
+      "description": "Apply a discount to an order (policy limit enforced server-side).",
+      "writes_data": true
+    },
+    "create_quote": {
+      "owner_agent": "sales",
+      "signature": "create_quote(customer_id, lines[], valid_days=7)",
+      "description": "Create a priced quote without touching stock.",
+      "writes_data": true
+    },
+    "generate_invoice": {
+      "owner_agent": "finance",
+      "signature": "generate_invoice(order_id)",
+      "description": "Produce invoice/receipt text (and number) for an order.",
+      "writes_data": true
+    },
+    "customer_ranking": {
+      "owner_agent": "sales",
+      "signature": "customer_ranking(days=90, by='revenue'|'orders', limit=10)",
+      "description": "Top customers by spend or frequency.",
+      "writes_data": false
+    },
+    "inactive_customers": {
+      "owner_agent": "marketing",
+      "signature": "inactive_customers(days=60)",
+      "description": "Customers with no order in the last N days (win-back list).",
+      "writes_data": false
+    },
+    "item_margins": {
+      "owner_agent": "finance",
+      "signature": "item_margins(days=30)",
+      "description": "Revenue, units, gross margin % per item.",
+      "writes_data": false
+    },
+    "sales_by_period": {
+      "owner_agent": "sales",
+      "signature": "sales_by_period(start,end,group_by='day'|'week'|'month'|'item'|'category'|'customer')",
+      "description": "Sales grouped over an arbitrary date range.",
+      "writes_data": false
+    },
+    "financial_summary_range": {
+      "owner_agent": "finance",
+      "signature": "financial_summary_range(start,end)",
+      "description": "P&L for an arbitrary date range (existing tool only supports trailing days).",
+      "writes_data": false
+    },
+    "expenses_by_category": {
+      "owner_agent": "finance",
+      "signature": "expenses_by_category(start,end)",
+      "description": "Expense totals per category.",
+      "writes_data": false
+    },
+    "stock_history": {
+      "owner_agent": "inventory",
+      "signature": "stock_history(sku?, days=30, reason?)",
+      "description": "Stock movements (sales, restocks, write-offs) from the stock log.",
+      "writes_data": false
+    },
+    "days_of_cover": {
+      "owner_agent": "inventory",
+      "signature": "days_of_cover(days=30)",
+      "description": "Per-item stock days remaining based on recent sales velocity.",
+      "writes_data": false
+    },
+    "slow_movers": {
+      "owner_agent": "inventory",
+      "signature": "slow_movers(days=30, max_units=2)",
+      "description": "Items with little or no recent sales (dead stock candidates).",
+      "writes_data": false
+    },
+    "stock_valuation": {
+      "owner_agent": "inventory",
+      "signature": "stock_valuation()",
+      "description": "Stock on hand valued at cost and at retail.",
+      "writes_data": false
+    },
+    "record_stocktake": {
+      "owner_agent": "inventory",
+      "signature": "record_stocktake(counts:[{sku,counted}])",
+      "description": "Reconcile physical counts vs system and log variances.",
+      "writes_data": true
+    },
+    "list_suppliers": {
+      "owner_agent": "inventory",
+      "signature": "list_suppliers(query='')",
+      "description": "Suppliers with contact, lead time, items supplied.",
+      "writes_data": false
+    },
+    "create_purchase_order": {
+      "owner_agent": "inventory",
+      "signature": "create_purchase_order(supplier_id, lines[])",
+      "description": "Create a purchase order (draft) for restocking.",
+      "writes_data": true
+    },
+    "receive_purchase_order": {
+      "owner_agent": "inventory",
+      "signature": "receive_purchase_order(po_id, received_lines[])",
+      "description": "Receive goods: increases stock, records payable.",
+      "writes_data": true
+    },
+    "set_budget": {
+      "owner_agent": "finance",
+      "signature": "set_budget(category, monthly_amount)",
+      "description": "Set a monthly budget per expense category.",
+      "writes_data": true
+    },
+    "budget_vs_actual": {
+      "owner_agent": "finance",
+      "signature": "budget_vs_actual(month)",
+      "description": "Compare budget with actual spend.",
+      "writes_data": false
+    },
+    "list_receivables": {
+      "owner_agent": "finance",
+      "signature": "list_receivables()",
+      "description": "Unpaid/partially paid orders and invoices with age.",
+      "writes_data": false
+    },
+    "record_payment": {
+      "owner_agent": "finance",
+      "signature": "record_payment(order_id, amount, method)",
+      "description": "Record a customer payment against an order.",
+      "writes_data": true
+    },
+    "list_payables": {
+      "owner_agent": "finance",
+      "signature": "list_payables()",
+      "description": "Money owed to suppliers with due dates.",
+      "writes_data": false
+    },
+    "set_target": {
+      "owner_agent": "sales",
+      "signature": "set_target(metric, period, value)",
+      "description": "Set a sales/revenue/profit target.",
+      "writes_data": true
+    },
+    "target_progress": {
+      "owner_agent": "sales",
+      "signature": "target_progress(period)",
+      "description": "Progress vs targets.",
+      "writes_data": false
+    },
+    "search_kb": {
+      "owner_agent": "support",
+      "signature": "search_kb(query)",
+      "description": "Search FAQ/policy/knowledge base articles.",
+      "writes_data": false
+    },
+    "list_templates": {
+      "owner_agent": "support",
+      "signature": "list_templates(kind)",
+      "description": "Reply/announcement templates (apology, delay, refund, welcome...).",
+      "writes_data": false
+    },
+    "get_shipment_status": {
+      "owner_agent": "support",
+      "signature": "get_shipment_status(order_id)",
+      "description": "Delivery/pickup status of an order.",
+      "writes_data": false
+    },
+    "tag_ticket": {
+      "owner_agent": "support",
+      "signature": "tag_ticket(ticket_id, tags[], priority?)",
+      "description": "Add category tags and priority to a ticket.",
+      "writes_data": true
+    },
+    "ticket_stats": {
+      "owner_agent": "support",
+      "signature": "ticket_stats(days=30)",
+      "description": "Ticket volumes by tag, time-to-resolve, backlog.",
+      "writes_data": false
+    },
+    "create_campaign": {
+      "owner_agent": "marketing",
+      "signature": "create_campaign(name, goal, channel, start, end, offer, audience)",
+      "description": "Register a marketing campaign for tracking.",
+      "writes_data": true
+    },
+    "campaign_results": {
+      "owner_agent": "marketing",
+      "signature": "campaign_results(campaign_id)",
+      "description": "Orders and revenue attributed to a campaign window/code.",
+      "writes_data": false
+    },
+    "create_promo_code": {
+      "owner_agent": "marketing",
+      "signature": "create_promo_code(code, percent|amount, valid_from, valid_to, max_uses)",
+      "description": "Create a promo code (margin floor enforced).",
+      "writes_data": true
+    },
+    "customer_segments": {
+      "owner_agent": "marketing",
+      "signature": "customer_segments()",
+      "description": "RFM-style segments: new, loyal, at-risk, lapsed, big spenders.",
+      "writes_data": false
+    },
+    "web_search": {
+      "owner_agent": "marketing",
+      "signature": "web_search(query)",
+      "description": "Public web lookup (competitor prices, trends, holidays). Needs an external MCP search server.",
+      "writes_data": false
+    },
+    "export_csv": {
+      "owner_agent": "finance",
+      "signature": "export_csv(report, start?, end?)",
+      "description": "Export a report to a CSV file (e.g. via filesystem MCP).",
+      "writes_data": true
+    },
+    "calendar_events": {
+      "owner_agent": "marketing",
+      "signature": "calendar_events(range)",
+      "description": "Upcoming holidays/events/campaign dates (external calendar MCP).",
+      "writes_data": false
+    }
+  },
+  "general_capabilities_all_agents": [
+    "Explain any number it reports (how it was computed)",
+    "Answer in the owner's language/tone",
+    "Summarise results as short bullet points or a table",
+    "Ask a clarifying question when a required detail (customer, SKU, quantity, amount) is missing",
+    "Refuse and escalate when a request breaks the profile's policies",
+    "Never invent data; say when a tool is missing"
+  ]
+}

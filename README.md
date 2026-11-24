@@ -97,6 +97,25 @@ tests/               scripted-LLM tests incl. approval, rejection, resume, repea
 ```
 
 ## Choosing a model (important with small local models)
+
+To use NVIDIA Nemotron 3.5 Lightning for the supervisor and workers on a machine
+that can run the model:
+
+```powershell
+ollama pull nemotron-3.5-lightning
+$env:OLLAMA_MODEL = 'nemotron-3.5-lightning'
+.\.venv\Scripts\python.exe -m bizops.office
+```
+
+Use the printed localhost link. If `OLLAMA_SUPERVISOR_MODEL` is set, that value
+selects a separate supervisor model. The GitHub Pages demo runs in the browser
+and uses rule-based routing.
+
+The local agent prompts use [the capability catalog](src/bizops/capabilities.json).
+It distinguishes supported, partial, and planned jobs. The runtime checks each
+entry against the tools assigned by the active business profile. Profile tool
+permissions and write approvals apply to all models.
+
 Workers need reliable **tool calling**; the supervisor needs to emit JSON. 7–8B models work for this routing size; if routing or arguments get flaky, set `OLLAMA_SUPERVISOR_MODEL` to a bigger model (e.g. 14B) while keeping a small worker model. Context is 8k (`llm.py`). Everything is `temperature=0`.
 
 ## Known limits / next steps
