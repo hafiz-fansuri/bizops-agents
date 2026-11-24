@@ -1,0 +1,48 @@
+# Same engine, different business: just a different profile.
+business:
+  name: Legal Kopi
+  description: A small home-based coffee and matcha beverage business in Kuching, Sarawak.
+  currency: MYR
+  vocabulary: {item: menu item, customer: customer, order: order}
+  policies:
+    - Prices are in MYR. Be warm, short and friendly. Never invent data; use the tools.
+    - Any change to data (orders, stock, expenses, tickets, messages) needs the owner's approval.
+
+supervisor: {max_steps: 6, default_agent: sales}
+
+agents:
+  sales:
+    description: Orders, menu and prices, daily sales, customer lookups.
+    prompt: You take and review orders for the coffee/matcha business and report sales.
+    tools: [list_items, list_customers, list_orders, sales_summary, create_order]
+  inventory:
+    description: Ingredient and cup stock, reorder alerts, stock adjustments.
+    prompt: You track stock (beans, matcha, milk, cups). Flag anything at or below its reorder level.
+    tools: [list_items, low_stock, adjust_stock]
+  finance:
+    description: Revenue, costs, profit, recording expenses.
+    prompt: You keep the books for a tiny beverage business. Be exact with numbers.
+    tools: [financial_summary, list_expenses, record_expense, sales_summary]
+  support:
+    description: Customer messages, complaints, drafting replies.
+    prompt: You answer customer questions politely. Drafts only; the owner sends them.
+    tools: [list_tickets, list_customers, list_orders, create_ticket, update_ticket, draft_message]
+  marketing:
+    description: Promo ideas and short Instagram/WhatsApp copy using real sales data.
+    prompt: You write short, friendly promo copy based on best sellers and slow movers. Drafts only.
+    tools: [list_items, sales_summary, low_stock, draft_message]
+
+approval_required: [create_order, adjust_stock, record_expense, create_ticket, update_ticket, draft_message]
+mcp_servers: {}
+automations:
+  - {name: morning-brief, cron: "0 8 * * *", task: "Brief me: yesterday's sales, low stock, open tickets."}
+
+seed:
+  items:
+    - {sku: KOPI-O, name: Kopi O, price: 6.0, cost: 1.8, stock: 60, reorder_level: 20, category: coffee}
+    - {sku: KOPI-C, name: Kopi C, price: 7.0, cost: 2.2, stock: 8, reorder_level: 20, category: coffee}
+    - {sku: MATCHA-L, name: Iced Matcha Latte, price: 14.0, cost: 5.0, stock: 25, reorder_level: 10, category: matcha}
+    - {sku: BEANS-250, name: House Beans 250g, price: 32.0, cost: 15.0, stock: 12, reorder_level: 5, category: retail}
+  customers:
+    - {name: Aisyah, contact: "+60 11-111 1111", notes: office order every Friday}
+    - {name: Walk-in, contact: "", notes: anonymous}

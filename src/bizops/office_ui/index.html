@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BizOps · Office HQ</title>
+  <link rel="stylesheet" href="/office.css">
+  <script src="/office.js" defer></script>
+</head>
+<body>
+  <header class="mast">
+    <div class="brand"><span class="brand-icon" aria-hidden="true"></span> BIZOPS <span>OFFICE HQ</span></div>
+    <div class="workspace"><span class="light" aria-hidden="true"></span><span id="business">Demo workspace</span></div>
+    <button id="reset" class="quiet" disabled>Reset demo</button>
+  </header>
+  <main>
+    <nav aria-label="Agents">
+      <h2>TEAM</h2>
+      <div id="team"></div>
+      <p class="nav-note">Sample records stay in this demo workspace.</p>
+    </nav>
+    <section class="center" aria-labelledby="office-title">
+      <div class="room-title"><h1 id="office-title">Operations floor</h1><span>DEMO WORKSPACE</span></div>
+      <div class="floor">
+        <canvas id="floor" width="640" height="400" aria-hidden="true"></canvas>
+        <div id="desks"></div>
+      </div>
+      <section class="drills" aria-labelledby="drills-title">
+        <div class="room-title"><h2 id="drills-title">Test scenarios</h2><span>NO MODEL REQUIRED</span></div>
+        <div id="scenarios"></div>
+      </section>
+    </section>
+    <aside class="console" aria-label="Agent chat">
+      <header class="agent-header">
+        <div id="portrait" class="portrait" aria-hidden="true"></div>
+        <div><h2 id="agent">Agent chat</h2><p id="description">Choose a desk or a test scenario.</p></div>
+      </header>
+      <div id="log" class="log" role="log" aria-live="polite">
+        <p class="message">Pick a test scenario to explore the sample business, or send a message to chat through local Ollama.</p>
+      </div>
+      <div id="approval" hidden></div>
+      <form id="chat">
+        <label for="prompt">Message an agent</label>
+        <div class="compose"><input id="prompt" maxlength="4000" required placeholder="Ask about the business…"><button disabled>Send</button></div>
+      </form>
+    </aside>
+  </main>
+</body>
+</html>

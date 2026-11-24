@@ -1,0 +1,62 @@
+# A "business profile" is the ONLY thing you change to point the system at a different business.
+business:
+  name: Acme Trading Co.
+  description: A small business selling products to customers.
+  currency: USD
+  vocabulary: {item: product, customer: customer, order: order}   # words the agents should use
+  policies:
+    - Never promise a discount above 10% without the owner's approval.
+    - Be polite and concise. Never invent data; use the tools to look things up.
+    - Any change to data (orders, stock, expenses, tickets, messages) needs the owner's approval.
+
+supervisor:
+  max_steps: 6            # max worker hand-offs per request
+  default_agent: sales
+
+agents:
+  sales:
+    description: Orders, products, prices, sales numbers, customer lookups.
+    prompt: You are the sales assistant. You can look up products, customers and orders, report sales, and create orders.
+    tools: [list_items, list_customers, list_orders, sales_summary, create_order]
+  inventory:
+    description: Stock levels, low-stock alerts, reorder suggestions, stock adjustments.
+    prompt: You are the inventory manager. Check stock, flag items at or below their reorder level, and adjust stock when asked.
+    tools: [list_items, low_stock, adjust_stock]
+  finance:
+    description: Revenue, expenses, profit, cash-flow summaries, recording expenses.
+    prompt: You are the finance assistant. Report revenue, expenses and profit accurately and record expenses when asked.
+    tools: [financial_summary, list_expenses, record_expense, sales_summary]
+  support:
+    description: Customer questions, complaints, support tickets, drafting replies.
+    prompt: You are the customer-support agent. Review tickets, look up the customer, and draft helpful replies. You never send anything; you only create drafts.
+    tools: [list_tickets, list_customers, list_orders, create_ticket, update_ticket, draft_message]
+  marketing:
+    description: Promotions, social posts, newsletters, campaign ideas based on real sales data.
+    prompt: You are the marketing assistant. Use real sales data to propose promotions and write short, on-brand copy. Drafts only.
+    tools: [list_items, sales_summary, low_stock, draft_message]
+
+# Tools that change data. The operator must approve these before they run.
+approval_required: [create_order, adjust_stock, record_expense, create_ticket, update_ticket, draft_message]
+
+# Extra MCP servers (anything: filesystem, calendar, email, Slack, ...). Example (disabled):
+mcp_servers: {}
+#  files:
+#    transport: stdio
+#    command: npx
+#    args: ["-y", "@modelcontextprotocol/server-filesystem", "./exports"]
+
+# Scheduled tasks for `bizops daemon` (cron syntax, server local time)
+automations:
+  - {name: morning-brief, cron: "0 8 * * *", task: "Give me a brief: yesterday's sales, items low on stock, and any open support tickets."}
+  - {name: weekly-finance, cron: "0 9 * * 1", task: "Summarise last 7 days of revenue, expenses and profit and flag anything unusual."}
+
+seed:
+  items:
+    - {sku: P-001, name: Starter Pack, price: 19.0, cost: 8.0, stock: 40, reorder_level: 10, category: bundles}
+    - {sku: P-002, name: Standard Widget, price: 9.5, cost: 3.2, stock: 6, reorder_level: 15, category: widgets}
+    - {sku: P-003, name: Premium Widget, price: 24.0, cost: 9.0, stock: 22, reorder_level: 8, category: widgets}
+    - {sku: P-004, name: Gift Card, price: 25.0, cost: 0.0, stock: 999, reorder_level: 0, category: other}
+  customers:
+    - {name: Alex Tan, contact: alex@example.com, notes: repeat customer}
+    - {name: Siti Rahman, contact: "+60 12-000 0000", notes: prefers WhatsApp}
+    - {name: Walk-in, contact: "", notes: anonymous counter sales}
